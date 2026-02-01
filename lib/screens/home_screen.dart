@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_apps/device_apps.dart';
 import '../services/platform_channel.dart';
+import '../services/pin_service.dart';
 import 'app_picker_screen.dart';
 import 'settings_screen.dart';
+import 'widgets/pin_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,9 +16,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _focusModeEnabled = false;
+  List<Application> _selectedApps = [];
   int _selectedAppsCount = 0;
   bool _hasOverlayPermission = false;
   bool _hasUsageStatsPermission = false;
+  bool _isBatteryOptimized = false;
   bool _isLoading = true;
 
   String? _overlayImagePath;
@@ -28,21 +33,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadState() async {
     final prefs = await SharedPreferences.getInstance();
-    final selectedApps = prefs.getStringList('selected_apps') ?? [];
+    final selectedPackageNames = prefs.getStringList('selected_apps') ?? [];
     final focusMode = prefs.getBool('focus_mode') ?? false;
     final imagePath = prefs.getString('overlay_image');
     
     final hasOverlay = await PlatformChannel.hasOverlayPermission();
     final hasUsageStats = await PlatformChannel.hasUsageStatsPermission();
+    final isBatteryIgnored = await PlatformChannel.isBatteryOptimizationIgnored();
+
+    // Fetch app details for the selected packages
+    List<Application> apps = [];
+    for (String pkg in selectedPackageNames) {
+      final app = await DeviceApps.getApp(pkg, true);
+      if (app != null) {
+        apps.add(app);
+      }
+    }
+    apps.sort((a, b) => a.appName.compareTo(b.appName));
 
     setState(() {
-      _selectedAppsCount = selectedApps.length;
+      _selectedApps = apps;
+      _selectedAppsCount = apps.length;
       _focusModeEnabled = focusMode;
       _overlayImagePath = imagePath;
       _hasOverlayPermission = hasOverlay;
       _hasUsageStatsPermission = hasUsageStats;
+      _isBatteryOptimized = !isBatteryIgnored;
       _isLoading = false;
     });
+  }
+
+  Future<void> _removeApp(String packageName) async {
+    // Check for PIN
+    final hasPin = await PinService().isPinSet();
+    
+    final verified = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PinDialog(
+        title: hasPin ? 'Enter PIN to Remove App' : 'Create PIN to Remove Apps',
+        isSettingPin: !hasPin,
+      ),
+    );
+    
+    if (verified != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final selectedApps = prefs.getStringList('selected_apps') ?? [];
+    selectedApps.remove(packageName);
+    
+    await prefs.setStringList('selected_apps', selectedApps);
+    await PlatformChannel.setSelectedApps(selectedApps);
+    
+    // Reload state to update UI
+    _loadState();
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('App removed from overlay list'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   Future<void> _toggleFocusMode(bool value) async {
@@ -60,6 +113,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (value && _overlayImagePath == null) {
       final shouldUseDefault = await _showNoImageDialog();
       if (shouldUseDefault != true) {
+        return;
+      }
+    }
+
+    if (!value) {
+      // Turning OFF focus mode - Check PIN
+      final hasPin = await PinService().isPinSet();
+      
+      final verified = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => PinDialog(
+          title: hasPin ? 'Enter PIN to Disable Focus' : 'Create PIN to Disable Focus',
+          isSettingPin: !hasPin,
+        ),
+      );
+      
+      if (verified != true) {
+        // Reset switch if canceled
+        setState(() {
+          _focusModeEnabled = true;
+        });
         return;
       }
     }
@@ -242,23 +317,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Selected Apps Card
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.apps),
-                  title: const Text('Selected Apps'),
-                  subtitle: Text('$_selectedAppsCount apps will trigger overlay'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AppPickerScreen()),
-                    ).then((_) => _loadState());
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
               // Permissions Status
               Card(
                 child: Padding(
@@ -280,11 +338,112 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Usage access',
                         _hasUsageStatsPermission,
                       ),
+                      const SizedBox(height: 8),
+                      _buildPermissionRow(
+                        'Battery unoptimized',
+                        !_isBatteryOptimized,
+                      ),
                     ],
                   ),
                 ),
               ),
-              const Spacer(),
+              if (_isBatteryOptimized) ...[
+                const SizedBox(height: 16),
+                Card(
+                  color: Colors.orange.shade100,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'App might close in background due to battery optimization.',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            await PlatformChannel.requestBatteryOptimization();
+                            _loadState();
+                          },
+                          child: const Text('DISABLE OPTIMIZATION'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Selected Apps Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Monitored Apps',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AppPickerScreen()),
+                      ).then((_) => _loadState());
+                    },
+                    label: const Text('Add Apps'),
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (_selectedApps.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.apps_outage, size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No apps selected for overlay',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _selectedApps.length,
+                    itemBuilder: (context, index) {
+                      final app = _selectedApps[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: app is ApplicationWithIcon
+                              ? Image.memory(app.icon, width: 32, height: 32)
+                              : const Icon(Icons.android),
+                          title: Text(app.appName),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                            onPressed: () => _removeApp(app.packageName),
+                            tooltip: 'Remove',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
 
               // Info Card
               Card(

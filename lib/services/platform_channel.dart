@@ -20,8 +20,49 @@ class PlatformChannel {
       await _channel.invokeMethod('setOverlayImage', {
         'imagePath': imagePath,
       });
+      // Also set overlay type to image
+      await setOverlayType('image');
     } on PlatformException catch (e) {
       print('Error setting overlay image: ${e.message}');
+    }
+  }
+
+  // Send color overlay settings to Android
+  static Future<void> setColorOverlay({
+    required int backgroundColor,
+    required String text,
+    required int textColor,
+  }) async {
+    try {
+      await _channel.invokeMethod('setColorOverlay', {
+        'backgroundColor': backgroundColor,
+        'text': text,
+        'textColor': textColor,
+      });
+    } on PlatformException catch (e) {
+      print('Error setting color overlay: ${e.message}');
+    }
+  }
+
+  // Set overlay type (image or color)
+  static Future<void> setOverlayType(String type) async {
+    try {
+      await _channel.invokeMethod('setOverlayType', {
+        'type': type,
+      });
+    } on PlatformException catch (e) {
+      print('Error setting overlay type: ${e.message}');
+    }
+  }
+
+  // Set image source (custom or default)
+  static Future<void> setImageSource(String source) async {
+    try {
+      await _channel.invokeMethod('setImageSource', {
+        'source': source,
+      });
+    } on PlatformException catch (e) {
+      print('Error setting image source: ${e.message}');
     }
   }
 
@@ -35,6 +76,8 @@ class PlatformChannel {
       print('Error setting focus mode: ${e.message}');
     }
   }
+
+
 
   // Request overlay permission
   static Future<bool> requestOverlayPermission() async {
@@ -76,6 +119,61 @@ class PlatformChannel {
       return result;
     } on PlatformException catch (e) {
       print('Error checking usage stats permission: ${e.message}');
+      return false;
+    }
+  }
+
+  // Send blocked websites to Android
+  static Future<void> setBlockedWebsites(List<String> websites) async {
+    try {
+      await _channel.invokeMethod('setBlockedWebsites', {
+        'websites': websites,
+      });
+    } on PlatformException catch (e) {
+      print('Error setting blocked websites: ${e.message}');
+    }
+  }
+
+  // Request accessibility permission
+  static Future<bool> requestAccessibilityPermission() async {
+    try {
+      final bool result = await _channel.invokeMethod('requestAccessibilityPermission');
+      return result;
+    } on PlatformException catch (e) {
+      print('Error requesting accessibility permission: ${e.message}');
+      return false;
+    }
+  }
+
+  // Check if accessibility permission is granted
+  static Future<bool> hasAccessibilityPermission() async {
+    try {
+      final bool result = await _channel.invokeMethod('isAccessibilityGranted');
+      return result;
+    } on PlatformException catch (e) {
+      print('Error checking accessibility permission: ${e.message}');
+      return false;
+    }
+  }
+
+  // Check if battery optimization is ignored
+  static Future<bool> isBatteryOptimizationIgnored() async {
+    try {
+      final bool result = await _channel.invokeMethod('isBatteryOptimizationIgnored');
+      return result;
+    } on PlatformException catch (e) {
+      print('Error checking battery optimization: ${e.message}');
+      return true; // Default to true to not annoy user on error
+    }
+  }
+
+  // Request battery optimization ignore
+  static Future<bool> requestBatteryOptimization() async {
+    try {
+      final bool result = await _channel.invokeMethod('requestBatteryOptimization');
+      return result;
+    } on PlatformException catch (e) {
+      print('Error requesting battery optimization: ${e.message}');
       return false;
     }
   }

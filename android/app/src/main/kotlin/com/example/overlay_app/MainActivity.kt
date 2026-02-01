@@ -17,6 +17,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Prevent peeking in Recents
+        window.setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE, android.view.WindowManager.LayoutParams.FLAG_SECURE)
         
         preferencesManager = PreferencesManager(this)
 
@@ -46,6 +48,15 @@ class MainActivity : FlutterActivity() {
                         preferencesManager.setFocusModeEnabled(enabled)
                         if (enabled) {
                             startMonitoringService()
+                            // Auto-request battery optimization if not ignored
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                                if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                    intent.data = Uri.parse("package:$packageName")
+                                    startActivity(intent)
+                                }
+                            }
                         } else {
                             stopMonitoringService()
                         }
@@ -54,6 +65,7 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_ARGUMENT", "Enabled cannot be null", null)
                     }
                 }
+
                 "requestOverlayPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         if (!Settings.canDrawOverlays(this)) {
@@ -89,6 +101,88 @@ class MainActivity : FlutterActivity() {
                 "hasUsageStatsPermission" -> {
                     result.success(hasUsageStatsPermission())
                 }
+                "setBlockedWebsites" -> {
+                    val websites = call.argument<List<String>>("websites")
+                    if (websites != null) {
+                        preferencesManager.setBlockedWebsites(websites)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Websites list cannot be null", null)
+                    }
+                }
+                "requestAccessibilityPermission" -> {
+                    if (!isAccessibilityServiceEnabled()) {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        startActivity(intent)
+                        result.success(false)
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "isAccessibilityGranted" -> {
+                    result.success(isAccessibilityServiceEnabled())
+                }
+                "requestBatteryOptimization" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val intent = Intent()
+                        val packageName = packageName
+                        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                            intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                            intent.data = Uri.parse("package:$packageName")
+                            startActivity(intent)
+                            result.success(false)
+                        } else {
+                            result.success(true)
+                        }
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "isBatteryOptimizationIgnored" -> {
+                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val packageName = packageName
+                        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                        result.success(pm.isIgnoringBatteryOptimizations(packageName))
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "setOverlayType" -> {
+                    val type = call.argument<String>("type")
+                    if (type != null) {
+                        preferencesManager.setOverlayType(type)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Overlay type cannot be null", null)
+                    }
+                }
+                "setImageSource" -> {
+                    val source = call.argument<String>("source")
+                    if (source != null) {
+                        preferencesManager.setImageSource(source)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Image source cannot be null", null)
+                    }
+                }
+                "setColorOverlay" -> {
+                    val backgroundColor = (call.argument<Any>("backgroundColor") as? Long)?.toInt() 
+                        ?: (call.argument<Any>("backgroundColor") as? Int)
+                    val text = call.argument<String>("text")
+                    val textColor = (call.argument<Any>("textColor") as? Long)?.toInt() 
+                        ?: (call.argument<Any>("textColor") as? Int)
+                    
+                    if (backgroundColor != null && text != null && textColor != null) {
+                        preferencesManager.setOverlayType("color")
+                        preferencesManager.setBackgroundColor(backgroundColor)
+                        preferencesManager.setOverlayText(text)
+                        preferencesManager.setTextColor(textColor)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Color overlay parameters cannot be null", null)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -112,6 +206,24 @@ class MainActivity : FlutterActivity() {
             )
         }
         return mode == AppOpsManager.MODE_ALLOWED
+    }
+    
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val accessibilityEnabled = Settings.Secure.getInt(
+            contentResolver,
+            Settings.Secure.ACCESSIBILITY_ENABLED, 0
+        )
+        if (accessibilityEnabled == 1) {
+            val service = "$packageName/${WebsiteMonitorService::class.java.canonicalName}"
+            val settingValue = Settings.Secure.getString(
+                contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            if (settingValue != null) {
+                return settingValue.contains(service)
+            }
+        }
+        return false
     }
 
     private fun startMonitoringService() {

@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_service_description">This service is needed to detect which website you are visiting to enable the focus mode overlay on blocked sites.</string>
+</resources>

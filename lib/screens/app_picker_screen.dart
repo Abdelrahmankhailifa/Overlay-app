@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/platform_channel.dart';
+import 'website_blocker_screen.dart';
 
 class AppPickerScreen extends StatefulWidget {
   const AppPickerScreen({super.key});
@@ -82,6 +83,16 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
           TextButton(
             onPressed: _selectedPackages.isEmpty ? null : _saveSelection,
             child: const Text('SAVE'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.public_off),
+            tooltip: 'Block Websites',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const WebsiteBlockerScreen()),
+              );
+            },
           ),
         ],
       ),
