@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:showcaseview/showcaseview.dart';
 import 'screens/home_screen.dart';
+import 'services/walkthrough_service.dart';
+import 'utils/walkthrough_keys.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -56,7 +64,20 @@ class MyApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+      home: ShowCaseWidget(
+        onComplete: (index, key) {
+           // Handle homepage walkthrough completion
+           if (key == WalkthroughKeys.permissionsCard) {
+             WalkthroughService().markHomeWalkthroughComplete();
+           }
+           // Keep existing completion handlers
+           if (key == WalkthroughKeys.settingsButton || 
+               key == WalkthroughKeys.removeAppButton) {
+             WalkthroughService().markWalkthroughComplete();
+           }
+        },
+        builder: (context) => const HomeScreen(),
+      ),
     );
   }
 }

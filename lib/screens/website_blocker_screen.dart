@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/platform_channel.dart';
 import '../services/pin_service.dart';
 import 'widgets/pin_dialog.dart';
+import 'package:showcaseview/showcaseview.dart';
+import '../utils/walkthrough_keys.dart';
+import '../services/walkthrough_service.dart';
 
 class WebsiteBlockerScreen extends StatefulWidget {
   const WebsiteBlockerScreen({super.key});
@@ -21,6 +24,30 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
     super.initState();
     _loadBlockedWebsites();
     _checkPermission();
+
+     // Check and start walkthrough
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndStartWalkthrough();
+    });
+  }
+
+  Future<void> _checkAndStartWalkthrough() async {
+    if (await WalkthroughService().shouldShowWebsiteBlockerWalkthrough()) {
+      if (mounted) {
+        // Collect targets, might depend on permission state
+        final targets = [
+          if (!_hasPermission) WalkthroughKeys.accessibilityWarning,
+          WalkthroughKeys.urlInputField,
+          WalkthroughKeys.addWebsiteButton,
+        ];
+        
+        // Only start if we have targets
+        if (targets.isNotEmpty) {
+           ShowCaseWidget.of(context).startShowCase(targets);
+           WalkthroughService().markWebsiteBlockerWalkthroughComplete();
+        }
+      }
+    }
   }
 
   Future<void> _checkPermission() async {
@@ -31,6 +58,8 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
       });
     }
   }
+
+  // ... (keep requestPermission, loadBlockedWebsites, addWebsite, removeWebsite, saveWebsites)
 
   Future<void> _requestPermission() async {
     await PlatformChannel.requestAccessibilityPermission();
@@ -102,103 +131,122 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Block Websites'),
-      ),
-      body: Column(
-        children: [
-          // Permission Warning
-          if (!_hasPermission)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.orange.shade100,
-              child: Column(
-                children: [
-                   Row(
+    return ShowCaseWidget(
+      builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Block Websites'),
+            ),
+            body: Column(
+              children: [
+                // Permission Warning
+                if (!_hasPermission)
+                  Showcase(
+                    key: WalkthroughKeys.accessibilityWarning,
+                    title: 'Permission Required',
+                    description: 'To effectively monitor and block websites, this app requires Accessibility Service permission. Please enable it to continue.',
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      color: Colors.orange.shade100,
+                      child: Column(
+                        children: [
+                           Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Website blocking requires Accessibility Service permission.",
+                                  style: TextStyle(color: Colors.orange.shade900),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _requestPermission,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text("Enable Permission"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Add Website Input
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          "Website blocking requires Accessibility Service permission.",
-                          style: TextStyle(color: Colors.orange.shade900),
+                        child: Showcase(
+                          key: WalkthroughKeys.urlInputField,
+                          title: 'Website URL',
+                          description: 'Enter the exact web address (URL) of the site you wish to block to prevent access.',
+                          child: TextField(
+                            controller: _urlController,
+                            decoration: const InputDecoration(
+                              hintText: 'example.com',
+                              labelText: 'Block Website',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.public),
+                            ),
+                            onSubmitted: (_) => _addWebsite(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Showcase(
+                        key: WalkthroughKeys.addWebsiteButton,
+                        title: 'Add Website',
+                        description: 'Tap this button to confirm and add the entered URL to your block list.',
+                        child: IconButton.filled(
+                          onPressed: _addWebsite,
+                          icon: const Icon(Icons.add),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _requestPermission,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text("Enable Permission"),
-                  ),
-                ],
-              ),
-            ),
-
-          // Add Website Input
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _urlController,
-                    decoration: const InputDecoration(
-                      hintText: 'example.com',
-                      labelText: 'Block Website',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.public),
-                    ),
-                    onSubmitted: (_) => _addWebsite(),
-                  ),
                 ),
-                const SizedBox(width: 16),
-                IconButton.filled(
-                  onPressed: _addWebsite,
-                  icon: const Icon(Icons.add),
+
+                // List
+                Expanded(
+                  child: _blockedWebsites.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.block, size: 64, color: Colors.grey[300]),
+                              const SizedBox(height: 16),
+                              Text(
+                                "No websites blocked",
+                                style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _blockedWebsites.length,
+                          itemBuilder: (context, index) {
+                            final site = _blockedWebsites[index];
+                            return ListTile(
+                              leading: const Icon(Icons.public_off, color: Colors.red),
+                              title: Text(site),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _removeWebsite(site),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
-          ),
-
-          // List
-          Expanded(
-            child: _blockedWebsites.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.block, size: 64, color: Colors.grey[300]),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No websites blocked",
-                          style: TextStyle(color: Colors.grey[500], fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _blockedWebsites.length,
-                    itemBuilder: (context, index) {
-                      final site = _blockedWebsites[index];
-                      return ListTile(
-                        leading: const Icon(Icons.public_off, color: Colors.red),
-                        title: Text(site),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _removeWebsite(site),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+          );
+        },
     );
   }
 }

@@ -3,6 +3,9 @@ import 'package:device_apps/device_apps.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/platform_channel.dart';
 import 'website_blocker_screen.dart';
+import 'package:showcaseview/showcaseview.dart';
+import '../utils/walkthrough_keys.dart';
+import '../services/walkthrough_service.dart';
 
 class AppPickerScreen extends StatefulWidget {
   const AppPickerScreen({super.key});
@@ -22,7 +25,26 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
   void initState() {
     super.initState();
     _loadApps();
+    
+     // Check and start walkthrough
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndStartWalkthrough();
+    });
   }
+
+  Future<void> _checkAndStartWalkthrough() async {
+    if (await WalkthroughService().shouldShowAppPickerWalkthrough()) {
+      if (mounted) {
+        ShowCaseWidget.of(context).startShowCase([
+          WalkthroughKeys.searchBar,
+          WalkthroughKeys.saveButton,
+        ]);
+        WalkthroughService().markAppPickerWalkthroughComplete();
+      }
+    }
+  }
+
+  // ... (keep _loadApps, _filterApps, _saveSelection)
 
   Future<void> _loadApps() async {
     final prefs = await SharedPreferences.getInstance();
@@ -76,131 +98,135 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Apps'),
-        actions: [
-          TextButton(
-            onPressed: _selectedPackages.isEmpty ? null : _saveSelection,
-            child: const Text('SAVE'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.public_off),
-            tooltip: 'Block Websites',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const WebsiteBlockerScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search apps...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
-              onChanged: _filterApps,
-            ),
-          ),
-
-          // Selected count
-          if (_selectedPackages.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+    return ShowCaseWidget(
+      builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Select Apps'),
+              actions: [
+                Showcase(
+                  key: WalkthroughKeys.saveButton,
+                  title: 'Confirm Selection',
+                  description: 'Once you have selected all the apps you wish to block, tap here to apply your changes.',
+                  child: TextButton(
+                    onPressed: _selectedPackages.isEmpty ? null : _saveSelection,
+                    child: const Text('SAVE'),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_selectedPackages.length} apps selected',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
+                ),
+               
+              ],
+            ),
+            body: Column(
+              children: [
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Showcase(
+                    key: WalkthroughKeys.searchBar,
+                    title: 'Search Applications',
+                    description: 'Use this bar to quickly locate specific apps installed on your device that you want to add to the block list.',
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search apps...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                      ),
+                      onChanged: _filterApps,
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
 
-          // Apps List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredApps.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No apps found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
+                // Selected count
+                if (_selectedPackages.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: _filteredApps.length,
-                        itemBuilder: (context, index) {
-                          final app = _filteredApps[index];
-                          final isSelected =
-                              _selectedPackages.contains(app.packageName);
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_selectedPackages.length} apps selected',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                          return CheckboxListTile(
-                            value: isSelected,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedPackages.add(app.packageName);
-                                } else {
-                                  _selectedPackages.remove(app.packageName);
-                                }
-                              });
-                            },
-                            title: Text(app.appName),
-                            subtitle: Text(
-                              app.packageName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                // Apps List
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _filteredApps.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.search_off,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No apps found',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
                               ),
+                            )
+                          : ListView.builder(
+                              itemCount: _filteredApps.length,
+                              itemBuilder: (context, index) {
+                                final app = _filteredApps[index];
+                                final isSelected =
+                                    _selectedPackages.contains(app.packageName);
+
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      if (value == true) {
+                                        _selectedPackages.add(app.packageName);
+                                      } else {
+                                        _selectedPackages.remove(app.packageName);
+                                      }
+                                    });
+                                  },
+                                   title: Text(
+              app.appName,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+                                  ),
+                                  secondary: app is ApplicationWithIcon
+                                      ? Image.memory(
+                                          app.icon,
+                                          width: 40,
+                                          height: 40,
+                                        )
+                                      : const Icon(Icons.android),
+                                );
+                              },
                             ),
-                            secondary: app is ApplicationWithIcon
-                                ? Image.memory(
-                                    app.icon,
-                                    width: 40,
-                                    height: 40,
-                                  )
-                                : const Icon(Icons.android),
-                          );
-                        },
-                      ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            ),
+          );
+        },
     );
   }
 }
