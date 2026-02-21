@@ -54,6 +54,12 @@ class WebsiteMonitorService : AccessibilityService() {
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
+            PreferencesManager.KEY_FOCUS_MODE -> {
+                if (!preferencesManager.isFocusModeEnabled()) {
+                    // Focus mode was turned off — hide overlay immediately
+                    overlayService.hideOverlay()
+                }
+            }
             PreferencesManager.KEY_SELECTED_APPS -> {
                 blockedApps = preferencesManager.getSelectedApps()
             }
@@ -75,6 +81,12 @@ class WebsiteMonitorService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        // If focus mode is disabled, hide any lingering overlay and do nothing
+        if (!preferencesManager.isFocusModeEnabled()) {
+            overlayService.hideOverlay()
+            return
+        }
+
         val packageName = event.packageName?.toString() ?: return
         val eventType = event.eventType
 

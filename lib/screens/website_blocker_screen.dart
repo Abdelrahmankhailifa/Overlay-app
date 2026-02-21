@@ -131,6 +131,9 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return ShowCaseWidget(
       builder: (context) {
           return Scaffold(
@@ -144,32 +147,41 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
                   Showcase(
                     key: WalkthroughKeys.accessibilityWarning,
                     title: 'Permission Required',
-                    description: 'To effectively monitor and block websites, this app requires Accessibility Service permission. Please enable it to continue.',
+                    description: 'Enable Accessibility Service to block websites.',
                     child: Container(
-                      padding: const EdgeInsets.all(16),
-                      color: Colors.orange.shade100,
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                      ),
                       child: Column(
                         children: [
                            Row(
                             children: [
-                              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              Icon(Icons.warning_amber_rounded, color: Colors.amber[800]),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  "Website blocking requires Accessibility Service permission.",
-                                  style: TextStyle(color: Colors.orange.shade900),
+                                  "Accessibility permission required",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber[900],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          ElevatedButton(
+                          ElevatedButton.icon(
                             onPressed: _requestPermission,
+                            icon: const Icon(Icons.settings),
+                            label: const Text("Enable Permission"),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
+                              backgroundColor: Colors.amber[700],
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text("Enable Permission"),
                           ),
                         ],
                       ),
@@ -185,13 +197,12 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
                         child: Showcase(
                           key: WalkthroughKeys.urlInputField,
                           title: 'Website URL',
-                          description: 'Enter the exact web address (URL) of the site you wish to block to prevent access.',
+                          description: 'Enter the website to block.',
                           child: TextField(
                             controller: _urlController,
                             decoration: const InputDecoration(
                               hintText: 'example.com',
-                              labelText: 'Block Website',
-                              border: OutlineInputBorder(),
+                              labelText: 'Website URL',
                               prefixIcon: Icon(Icons.public),
                             ),
                             onSubmitted: (_) => _addWebsite(),
@@ -202,10 +213,17 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
                       Showcase(
                         key: WalkthroughKeys.addWebsiteButton,
                         title: 'Add Website',
-                        description: 'Tap this button to confirm and add the entered URL to your block list.',
-                        child: IconButton.filled(
-                          onPressed: _addWebsite,
-                          icon: const Icon(Icons.add),
+                        description: 'Tap to add the website.',
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            onPressed: _addWebsite,
+                            icon: const Icon(Icons.add_rounded),
+                            tooltip: 'Add',
+                          ),
                         ),
                       ),
                     ],
@@ -219,25 +237,68 @@ class _WebsiteBlockerScreenState extends State<WebsiteBlockerScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.block, size: 64, color: Colors.grey[300]),
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceVariant.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.block_outlined,
+                                  size: 48,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
                               const SizedBox(height: 16),
                               Text(
                                 "No websites blocked",
-                                style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: _blockedWebsites.length,
                           itemBuilder: (context, index) {
                             final site = _blockedWebsites[index];
-                            return ListTile(
-                              leading: const Icon(Icons.public_off, color: Colors.red),
-                              title: Text(site),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () => _removeWebsite(site),
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant.withOpacity(0.3),
+                                ),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.errorContainer.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.public_off_rounded,
+                                    color: colorScheme.error,
+                                  ),
+                                ),
+                                title: Text(
+                                  site,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: colorScheme.error,
+                                  ),
+                                  onPressed: () => _removeWebsite(site),
+                                ),
                               ),
                             );
                           },

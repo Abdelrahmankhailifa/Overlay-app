@@ -315,7 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.purple,
               foregroundColor: Colors.white,
             ),
             child: const Text('Clear'),
@@ -404,6 +404,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return ShowCaseWidget(
       onStart: (index, key) {
         if (key.currentContext != null) {
@@ -434,458 +437,823 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             body: SingleChildScrollView(
               controller: _scrollController,
+              padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Overlay Type Selection
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Showcase(
-                      key: WalkthroughKeys.overlayImageSection,
-                      title: 'Overlay Appearance',
-                      description: 'Customize what you see when an app is blocked. Choose a calming image or a solid color to interrupt your habit loop effectively.',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Overlay Type',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: SegmentedButton<String>(
-                              segments: const [
-                                ButtonSegment(
-                                  value: 'image',
-                                  label: Text('Image'),
-                                  icon: Icon(Icons.image),
+                  // Overlay Type Selection Card
+                  Showcase(
+                    key: WalkthroughKeys.overlayImageSection,
+                    title: 'Overlay Appearance',
+                    description: 'Customize what you see when an app is blocked.',
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.palette_outlined,
+                                    color: colorScheme.primary,
+                                  ),
                                 ),
-                                ButtonSegment(
-                                  value: 'color',
-                                  label: Text('Color'),
-                                  icon: Icon(Icons.palette),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Overlay Type',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
-                              selected: {_overlayType},
-                              onSelectionChanged: (Set<String> selection) async {
-                                final newType = selection.first;
-                                setState(() {
-                                  _overlayType = newType;
-                                });
-                                final prefs = await SharedPreferences.getInstance();
-                                await prefs.setString('overlay_type', _overlayType);
-                                
-                                if (_overlayType == 'color') {
-                                  await _saveColorOverlay();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Switched to Color Overlay mode'),
-                                        duration: Duration(seconds: 2),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                } else {
-                                  await PlatformChannel.setOverlayType('image');
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Switched to Image Overlay mode'),
-                                        duration: Duration(seconds: 2),
-                                        backgroundColor: Colors.blue,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _overlayType == 'image' 
-                              ? '📸 Currently using Image mode' 
-                              : '🎨 Currently using Color mode',
-                            style: TextStyle(
-                              color: _overlayType == 'image' ? Colors.blue : Colors.green,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: SegmentedButton<String>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: 'image',
+                                    label: Text('Image'),
+                                    icon: Icon(Icons.image),
+                                  ),
+                                  ButtonSegment(
+                                    value: 'color',
+                                    label: Text('Color'),
+                                    icon: Icon(Icons.palette),
+                                  ),
+                                ],
+                                selected: {_overlayType},
+                                onSelectionChanged: (Set<String> selection) async {
+                                  final newType = selection.first;
+                                  setState(() {
+                                    _overlayType = newType;
+                                  });
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.setString('overlay_type', _overlayType);
+                                  
+                                  if (_overlayType == 'color') {
+                                    await _saveColorOverlay();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Switched to Color Overlay mode'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    await PlatformChannel.setOverlayType('image');
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Switched to Image Overlay mode'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: (_overlayType == 'image' ? Colors.blue : Colors.green).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _overlayType == 'image' ? '📸' : '🎨',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _overlayType == 'image' 
+                                      ? 'Image mode active' 
+                                      : 'Color mode active',
+                                    style: TextStyle(
+                                      color: _overlayType == 'image' ? Colors.blue[700] : Colors.green[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 16),
 
                   // Image Overlay Section
                   if (_overlayType == 'image')
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Custom Overlay Image',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          if (_overlayImagePath != null)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
                                 Container(
-                                  height: 200,
-                                  width: double.infinity,
-                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
+                                    color: colorScheme.secondaryContainer,
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey),
                                   ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
+                                  child: Icon(
+                                    Icons.image_outlined,
+                                    color: colorScheme.secondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Custom Image',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            if (_overlayImagePath != null)
+                              Column(
+                                children: [
+                                  Container(
+                                    height: 200,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: colorScheme.outlineVariant,
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
                                       child: Image.file(
                                         File(_overlayImagePath!),
                                         fit: BoxFit.cover,
-                                        width: double.infinity,
                                       ),
+                                    ),
                                   ),
+                                  const SizedBox(height: 16),
+                                ],
+                              ),
+                            
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _pickImage,
+                                icon: const Icon(Icons.image),
+                                label: Text(
+                                  _overlayImagePath == null
+                                      ? 'Select Custom Image'
+                                      : 'Change Custom Image',
                                 ),
-                                const SizedBox(height: 16),
-                              ],
+                              ),
                             ),
-                          
-                          ElevatedButton.icon(
-                            onPressed: _pickImage,
-                            icon: const Icon(Icons.image),
-                            label: Text(
-                              _overlayImagePath == null
-                                  ? 'Select Custom Image'
-                                  : 'Change Custom Image',
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
                   // Color Overlay Section
                   if (_overlayType == 'color')
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Color Overlay Settings',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: _backgroundColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _overlayText,
-                                style: TextStyle(
-                                  color: _textColor,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.color_lens_outlined,
+                                    color: colorScheme.secondary,
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Color Settings',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
+                            const SizedBox(height: 20),
+                            
+                            Container(
+                              height: 200,
+                              width: double.infinity,
                               decoration: BoxDecoration(
                                 color: _backgroundColor,
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colorScheme.outlineVariant),
                               ),
-                            ),
-                            title: const Text('Background Color'),
-                            trailing: const Icon(Icons.edit),
-                            onTap: _pickBackgroundColor,
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          TextField(
-                            controller: _textController,
-                            textDirection: TextDirection.ltr,
-                            decoration: const InputDecoration(
-                              labelText: 'Overlay Text',
-                              border: OutlineInputBorder(),
-                              hintText: 'e.g., Leave the phone',
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _overlayText = value;
-                              });
-                            },
-                            onSubmitted: (_) => _saveColorOverlay(),
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: _textColor,
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            title: const Text('Text Color'),
-                            trailing: const Icon(Icons.edit),
-                            onTap: _pickTextColor,
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          ElevatedButton.icon(
-                            onPressed: _saveColorOverlay,
-                            icon: const Icon(Icons.save),
-                            label: const Text('Save Color Overlay'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const Divider(),
-
-                  // Permissions Section
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Showcase(
-                      key: WalkthroughKeys.permissionsSection,
-                      title: 'Required Permissions',
-                      description: 'These permissions are vital for the app to function. "Display over other apps" shows the overlay, while "Usage access" detects when you open blocked apps.',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Permissions',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          ListTile(
-                            leading: Icon(
-                              _hasOverlayPermission ? Icons.check_circle : Icons.cancel,
-                              color: _hasOverlayPermission ? Colors.green : Colors.red,
-                            ),
-                            title: const Text('Display over other apps'),
-                            subtitle: Text(
-                              _hasOverlayPermission ? 'Granted' : 'Not granted',
-                            ),
-                            trailing: _hasOverlayPermission
-                                ? null
-                                : ElevatedButton(
-                                    onPressed: _requestOverlayPermission,
-                                    child: const Text('Grant'),
+                              child: Center(
+                                child: Text(
+                                  _overlayText,
+                                  style: TextStyle(
+                                    color: _textColor,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                          ),
-                          const SizedBox(height: 8),
-                          ListTile(
-                            leading: Icon(
-                              _hasUsageStatsPermission ? Icons.check_circle : Icons.cancel,
-                              color: _hasUsageStatsPermission ? Colors.green : Colors.red,
-                            ),
-                            title: const Text('Usage access'),
-                            subtitle: Text(
-                              _hasUsageStatsPermission ? 'Granted' : 'Not granted',
-                            ),
-                            trailing: _hasUsageStatsPermission
-                                ? null
-                                : ElevatedButton(
-                                    onPressed: _requestUsageStatsPermission,
-                                    child: const Text('Grant'),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Divider(),
-
-                  // Features Section
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Showcase(
-                      key: WalkthroughKeys.strictModeToggle,
-                      title: 'Strict Mode',
-                      description: 'For maximum discipline, Strict Mode immediately closes any blocked app you try to open, rather than just showing the overlay.',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Features',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          const ListTile(
-                              leading: Icon(Icons.bolt, color: Colors.orange),
-                              title: Text('Strict Blocking Active'),
-                              subtitle: Text('Apps will be forcefully closed immediately.'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Divider(),
-
-                  // Security Section
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Showcase(
-                      key: WalkthroughKeys.changePinButton,
-                      title: 'PIN Protection',
-                      description: 'Secure your settings with a PIN. This prevents you (or others) from easily removing blocks or disabling Focus Mode during a moment of weakness.',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Security',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          ListTile(
-                            leading: const Icon(Icons.lock_outline),
-                            title: const Text('PIN Protection'),
-                            subtitle: Text(_hasPin 
-                              ? 'PIN is set. Required to disable focus or remove apps.'
-                              : 'Set a PIN to prevent changes.'
-                            ),
-                            trailing: _hasPin
-                              ? PopupMenuButton<String>(
-                                  onSelected: (value) {
-                                    if (value == 'change') _changePin();
-                                    if (value == 'remove') _removePin();
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'change',
-                                      child: Text('Change PIN'),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'remove',
-                                      child: Text('Remove PIN'),
-                                    ),
-                                  ],
-                                )
-                              : ElevatedButton(
-                                  onPressed: _setPin,
-                                  child: const Text('Set PIN'),
+                                  textAlign: TextAlign.center,
                                 ),
-                          ),
-                        ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: _backgroundColor,
+                                    border: Border.all(color: colorScheme.outline),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                title: const Text('Background Color'),
+                                trailing: const Icon(Icons.edit_outlined),
+                                onTap: _pickBackgroundColor,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            TextField(
+                              controller: _textController,
+                              decoration: const InputDecoration(
+                                labelText: 'Overlay Text',
+                                hintText: 'e.g., Leave the phone',
+                                prefixIcon: Icon(Icons.text_fields),
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _overlayText = value;
+                                });
+                              },
+                              onSubmitted: (_) => _saveColorOverlay(),
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: _textColor,
+                                    border: Border.all(color: colorScheme.outline),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                title: const Text('Text Color'),
+                                trailing: const Icon(Icons.edit_outlined),
+                                onTap: _pickTextColor,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _saveColorOverlay,
+                                icon: const Icon(Icons.save),
+                                label: const Text('Save Color Settings'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+
+                  // Permissions Card
+                  Showcase(
+                    key: WalkthroughKeys.permissionsSection,
+                    title: 'Required Permissions',
+                    description: 'These permissions are vital for the app to function.',
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.tertiaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.security_outlined,
+                                    color: colorScheme.tertiary,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Permissions',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _hasOverlayPermission 
+                                    ? Colors.green.withOpacity(0.1)
+                                    : colorScheme.errorContainer.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _hasOverlayPermission 
+                                      ? Colors.green.withOpacity(0.3)
+                                      : colorScheme.error.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _hasOverlayPermission ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                                    color: _hasOverlayPermission ? Colors.green : colorScheme.error,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Display over other apps',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _hasOverlayPermission ? 'Granted' : 'Not granted',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (!_hasOverlayPermission)
+                                    TextButton(
+                                      onPressed: _requestOverlayPermission,
+                                      child: const Text('Grant'),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _hasUsageStatsPermission 
+                                    ? Colors.green.withOpacity(0.1)
+                                    : colorScheme.errorContainer.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _hasUsageStatsPermission 
+                                      ? Colors.green.withOpacity(0.3)
+                                      : colorScheme.error.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _hasUsageStatsPermission ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                                    color: _hasUsageStatsPermission ? Colors.green : colorScheme.error,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Usage access',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _hasUsageStatsPermission ? 'Granted' : 'Not granted',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (!_hasUsageStatsPermission)
+                                    TextButton(
+                                      onPressed: _requestUsageStatsPermission,
+                                      child: const Text('Grant'),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 16),
+
+                  // Features Card
+                  Showcase(
+                    key: WalkthroughKeys.strictModeToggle,
+                    title: 'Strict Mode',
+                    description: 'Strict Mode immediately closes blocked apps.',
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.bolt,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Features',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.bolt, color: Colors.orange),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Strict Blocking Active',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Apps will be forcefully closed immediately',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Security Card
+                  Showcase(
+                    key: WalkthroughKeys.changePinButton,
+                    title: 'PIN Protection',
+                    description: 'Secure your settings with a PIN.',
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.lock_outlined,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Security',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _hasPin ? Icons.lock : Icons.lock_open_outlined,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'PIN Protection',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _hasPin 
+                                            ? 'PIN is set and active'
+                                            : 'No PIN set',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  _hasPin
+                                    ? PopupMenuButton<String>(
+                                        onSelected: (value) {
+                                          if (value == 'change') _changePin();
+                                          if (value == 'remove') _removePin();
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(
+                                            value: 'change',
+                                            child: Text('Change PIN'),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 'remove',
+                                            child: Text('Remove PIN'),
+                                          ),
+                                        ],
+                                      )
+                                    : TextButton(
+                                        onPressed: _setPin,
+                                        child: const Text('Set PIN'),
+                                      ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   
-                  // Data Management (Keep without showcase for now or add if needed)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Showcase(
-                      key: WalkthroughKeys.dataManagementSection,
-                      title: 'Data Management',
-                      description: 'Need a fresh start? This allows you to clear all settings, blocked lists, and custom images to reset the app to its factory defaults.',
+                  // Data Management Card
+                  Showcase(
+                    key: WalkthroughKeys.dataManagementSection,
+                    title: 'Data Management',
+                    description: 'Clear all settings and data.',
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.errorContainer.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    color: colorScheme.error,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Data Management',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _clearData,
+                                icon: const Icon(Icons.delete_outline),
+                                label: const Text('Clear All Data'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: colorScheme.error,
+                                  foregroundColor: colorScheme.onError,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Help Card
+                  Showcase(
+                    key: WalkthroughKeys.helpSection,
+                    title: 'Quick Actions & Help',
+                    description: 'Access help and feedback options.',
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.help_outline,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Help',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: const Icon(Icons.help_outline, color: Colors.blue),
+                                title: const Text('Show Walkthrough'),
+                                subtitle: const Text('Replay the interactive guide'),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                                onTap: () async {
+                                  if (mounted) {
+                                    Navigator.pop(context, 'start_tour');
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: const Icon(Icons.feedback_outlined, color: Colors.teal),
+                                title: const Text('Send Feedback'),
+                                subtitle: const Text('Share your thoughts'),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                                onTap: _sendFeedback,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // About Card
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Data Management',
-                            style: Theme.of(context).textTheme.titleLarge,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.info_outline,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                'About',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _clearData,
-                            icon: const Icon(Icons.delete_outline),
-                            label: const Text('Clear All Data'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
+                          Text(
+                            'Focus Overlay helps you stay focused by displaying a custom image or colored background with text when you open distracting apps.',
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Version 1.0.0',
+                            style: TextStyle(
+                              color: colorScheme.outline,
+                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const Divider(),
-
-                  // Help Section
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Showcase(
-                      key: WalkthroughKeys.helpSection,
-                      title: 'Quick Actions & Help',
-                      description: 'Access the Website Blocker directly or replay this walkthrough if you need a refresher on how the app works.',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Help',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          ListTile(
-                            leading: const Icon(Icons.help_outline, color: Colors.blue),
-                            title: const Text('Show Walkthrough'),
-                            subtitle: const Text('Replay the interactive guide'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                            onTap: () async {
-                              if (mounted) {
-                                Navigator.pop(context, 'start_tour');
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          ListTile(
-                            leading: const Icon(Icons.feedback_outlined, color: Colors.teal),
-                            title: const Text('Send Feedback'),
-                            subtitle: const Text('Share your thoughts or report issues'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                            onTap: _sendFeedback,
-                          ),
-                          const SizedBox(height: 8),
-                         
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Divider(),
-
-                  // About Section
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'About',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Focus Overlay helps you stay focused by displaying a custom image or colored background with text when you open distracting apps. Choose between Image mode or Color mode in settings.',
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Version 1.0.0',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),

@@ -86,76 +86,155 @@ class _PinDialogState extends State<PinDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       child: Container(
-        padding: const EdgeInsets.all(16),
-        width: 300,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.95),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withOpacity(0.5),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(28),
+        width: 340,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Icon Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                widget.isSettingPin ? Icons.lock_outline : Icons.lock_open_outlined,
+                size: 32,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Title
             Text(
               widget.isSettingPin && _firstPin != null ? _message : widget.title,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
             ),
+            
+            // Error/Info Message
             if (_message.isNotEmpty && (!widget.isSettingPin || _firstPin == null)) ...[
-              const SizedBox(height: 8),
-              Text(
-                _message,
-                style: TextStyle(
-                  color: _error ? Colors.red : Colors.grey,
-                  fontSize: 14,
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _error 
+                      ? colorScheme.errorContainer.withOpacity(0.5)
+                      : colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _message,
+                  style: TextStyle(
+                    color: _error ? colorScheme.error : colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             
             // PIN Dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(4, (index) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  width: 16,
-                  height: 16,
+                final isFilled = index < _currentPin.length;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  width: 20,
+                  height: 20,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: index < _currentPin.length
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.surfaceVariant,
+                    color: isFilled
+                        ? colorScheme.primary
+                        : colorScheme.surfaceVariant,
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 1,
+                      color: isFilled 
+                          ? colorScheme.primary
+                          : colorScheme.outline.withOpacity(0.5),
+                      width: 2,
                     ),
+                    boxShadow: isFilled ? [
+                      BoxShadow(
+                        color: colorScheme.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ] : null,
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
             
             // Keypad
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 3,
-              childAspectRatio: 1.5,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
+              childAspectRatio: 1.2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
               children: [
                 ...List.generate(9, (index) => _buildKey('${index + 1}')),
-                const SizedBox(), // Empty
+                const SizedBox(), // Empty space
                 _buildKey('0'),
-                IconButton(
-                  onPressed: _onDelete,
-                  icon: const Icon(Icons.backspace_outlined),
-                ),
+                _buildDeleteKey(),
               ],
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            
+            // Cancel Button
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -164,20 +243,60 @@ class _PinDialogState extends State<PinDialog> {
   }
 
   Widget _buildKey(String val) {
-    return InkWell(
-      onTap: () => _onDigitPress(val),
-      borderRadius: BorderRadius.circular(50),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onDigitPress(val),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: colorScheme.secondaryContainer.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            val,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
+          ),
         ),
-        child: Text(
-          val,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+  
+  Widget _buildDeleteKey() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _onDelete,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: colorScheme.errorContainer.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Icon(
+            Icons.backspace_outlined,
+            color: colorScheme.error,
+            size: 24,
           ),
         ),
       ),
